@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -19,13 +21,11 @@
       --text:      #e8eaed;
       --text-sub:  #9aa0a6;
       --text-dim:  #5f6368;
-
-      /* 黒ぬき */
       --kuro-bg:   #17181a;
       --kuro-text: #e8eaed;
-      /* 白ぬき */
       --shiro-bg:  #e8eaed;
       --shiro-text:#17181a;
+      --online:    #34a853;
     }
 
     body {
@@ -53,6 +53,49 @@
       margin-top: 5px;
     }
 
+    /* ── オンライン表示 ── */
+    .online-bar {
+      max-width: 1200px;
+      margin: 0 auto 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .online-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--text-sub);
+    }
+    .online-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: background 0.3s;
+    }
+    .online-dot.connected { background: var(--online); }
+
+    .room-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--text-sub);
+    }
+    .room-code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text);
+      letter-spacing: 1px;
+    }
+
     /* ── ボタン ── */
     .controls {
       max-width: 1200px;
@@ -77,6 +120,11 @@
     }
     button:hover  { background: var(--surface2); color: var(--text); }
     button:active { background: var(--border); }
+    button.share-btn {
+      border-color: var(--online);
+      color: var(--online);
+    }
+    button.share-btn:hover { background: rgba(52,168,83,0.1); color: var(--online); }
 
     /* ── Tier テーブル ── */
     .tier-table {
@@ -110,18 +158,12 @@
     }
 
     /* ── 黒ぬき・白ぬき交互 ── */
-    /* S: 黒ぬき */
     .tier-S .tier-label { background: var(--kuro-bg);  color: var(--kuro-text); }
-    /* A: 白ぬき */
     .tier-A .tier-label { background: var(--shiro-bg); color: var(--shiro-text); }
-    /* B: 黒ぬき */
     .tier-B .tier-label { background: var(--kuro-bg);  color: var(--kuro-text); }
-    /* C: 白ぬき */
     .tier-C .tier-label { background: var(--shiro-bg); color: var(--shiro-text); }
-    /* D: 黒ぬき */
     .tier-D .tier-label { background: var(--kuro-bg);  color: var(--kuro-text); }
 
-    /* Tier ゾーン：黒ぬき行は少し明るく、白ぬき行は少し暗くして区別 */
     .tier-S .tier-zone { background: #252729; }
     .tier-A .tier-zone { background: #232527; }
     .tier-B .tier-zone { background: #252729; }
@@ -162,6 +204,15 @@
     .movie-card.dragging { opacity: 0.3; cursor: grabbing; }
     .insert-before { outline: 1px solid var(--text-sub); outline-offset: -1px; }
 
+    /* リモート更新時のフラッシュ */
+    .movie-card.remote-moved {
+      animation: remoteFlash 0.5s ease;
+    }
+    @keyframes remoteFlash {
+      0%   { background: rgba(66,133,244,0.35); }
+      100% { background: var(--surface); }
+    }
+
     .movie-card img {
       width: 100%;
       height: 118px;
@@ -178,7 +229,7 @@
       flex: 1;
     }
     .movie-num   { font-size: 0.57rem; color: var(--text-dim); display: block; font-weight: 500; }
-    .movie-title { color: var(--text);     font-size: 0.63rem; font-weight: 500; line-height: 1.3; display: block; }
+    .movie-title { color: var(--text); font-size: 0.63rem; font-weight: 500; line-height: 1.3; display: block; }
     .movie-year  { font-size: 0.55rem; color: var(--text-dim); margin-top: 1px; display: block; }
 
     /* ツールチップ */
@@ -239,6 +290,17 @@
   <p>ドラッグ＆ドロップで並べ替え　／　左右移動で順位を調整</p>
 </header>
 
+<div class="online-bar">
+  <div class="online-indicator">
+    <div class="online-dot" id="online-dot"></div>
+    <span id="online-count">接続中...</span>
+  </div>
+  <div class="room-info">
+    ルームID：<span class="room-code" id="room-code-display"></span>
+    <button class="share-btn" id="btn-share">URLをコピー</button>
+  </div>
+</div>
+
 <div class="controls">
   <button id="btn-reset">リセット</button>
   <button id="btn-copy">結果をコピー</button>
@@ -257,6 +319,41 @@
 <footer>DETECTIVE CONAN MOVIE TIER LIST — 第1作〜第29作</footer>
 
 <script>
+  /* ── Firebase 初期化 ── */
+  const firebaseConfig = {
+    apiKey: "AIzaSyBWxHvcTxQuQ31MJgSdB_vQm9ChPQ2nA6A",
+    authDomain: "conan-tier-list.firebaseapp.com",
+    databaseURL: "https://conan-tier-list-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "conan-tier-list",
+    storageBucket: "conan-tier-list.firebasestorage.app",
+    messagingSenderId: "179192982387",
+    appId: "1:179192982387:web:1436a1d598ae8ff9e13306"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  /* ── ルームID ── */
+  function getOrCreateRoom() {
+    const params = new URLSearchParams(location.search);
+    let room = params.get('r');
+    if (!room) {
+      room = Math.random().toString(36).slice(2, 8).toUpperCase();
+      params.set('r', room);
+      const newUrl = `${location.pathname}?${params.toString()}`;
+      history.replaceState(null, '', newUrl);
+    }
+    return room;
+  }
+  const ROOM_ID = getOrCreateRoom();
+  document.getElementById('room-code-display').textContent = ROOM_ID;
+
+  const stateRef    = db.ref(`rooms/${ROOM_ID}/state`);
+  const presenceRef = db.ref(`rooms/${ROOM_ID}/presence`);
+
+  /* ── 自分のクライアントID（自己更新ループ防止） ── */
+  const CLIENT_ID = Math.random().toString(36).slice(2);
+
+  /* ── 映画データ ── */
   const TIERS = ['S','A','B','C','D'];
   const MOVIES = [
     { num:1,  title:'時計仕掛けの摩天楼',    year:1997, img:'adf0d65f-aaf2-453d-8299-e627df79d61b.png' },
@@ -290,6 +387,7 @@
     { num:29, title:'ハイウェイの堕天使',       year:2026, img:'09231546.jpg' },
   ];
 
+  /* ── DOM 構築 ── */
   const tierTable = document.getElementById('tier-table');
   TIERS.forEach(t => {
     const row = document.createElement('div');
@@ -326,6 +424,7 @@
     return card;
   }
 
+  /* ── ドラッグ＆ドロップ ── */
   let dragCard = null;
   function addDragEvents(card) {
     card.addEventListener('dragstart', e => {
@@ -338,6 +437,7 @@
       dragCard = null;
       document.querySelectorAll('.drag-over').forEach(z => z.classList.remove('drag-over'));
       document.querySelectorAll('.insert-before').forEach(c => c.classList.remove('insert-before'));
+      saveState(); // ドロップ後にFirebaseへ保存
     });
   }
 
@@ -380,17 +480,98 @@
       if (!dragCard) return;
       const after = getDragAfterElement(zone, e.clientX, e.clientY);
       after ? zone.insertBefore(dragCard, after) : zone.appendChild(dragCard);
+      // dragend で saveState() が呼ばれる
     });
   });
 
+  /* ── Firebase: 状態保存 ── */
+  function saveState() {
+    const state = { clientId: CLIENT_ID };
+    TIERS.forEach(t => {
+      const zone = document.querySelector(`.tier-zone[data-tier="${t}"]`);
+      state[t] = [...zone.querySelectorAll('.movie-card')].map(c => Number(c.dataset.num));
+    });
+    state.pool = [...document.getElementById('pool').querySelectorAll('.movie-card')].map(c => Number(c.dataset.num));
+    stateRef.set(state);
+  }
+
+  /* ── Firebase: 状態適用（リモート更新） ── */
+  function applyState(state, animate) {
+    if (!state) return;
+    const zones = {};
+    TIERS.forEach(t => zones[t] = document.querySelector(`.tier-zone[data-tier="${t}"]`));
+    zones.pool = document.getElementById('pool');
+
+    [...TIERS, 'pool'].forEach(key => {
+      const zone = zones[key];
+      const nums = state[key] || [];
+      nums.forEach(num => {
+        const card = document.querySelector(`.movie-card[data-num="${num}"]`);
+        if (card) {
+          zone.appendChild(card);
+          if (animate) {
+            card.classList.remove('remote-moved');
+            void card.offsetWidth; // reflow
+            card.classList.add('remote-moved');
+            setTimeout(() => card.classList.remove('remote-moved'), 600);
+          }
+        }
+      });
+    });
+  }
+
+  /* ── Firebase: リモート変更を監視 ── */
+  let firstLoad = true;
+  stateRef.on('value', snapshot => {
+    const data = snapshot.val();
+    if (!data) {
+      // 誰もまだ保存していない → デフォルト（pool に全部）のまま
+      firstLoad = false;
+      return;
+    }
+    if (!firstLoad && data.clientId === CLIENT_ID) {
+      // 自分の書き込みエコーは無視
+      return;
+    }
+    applyState(data, !firstLoad); // 初回はアニメなし、以降はあり
+    firstLoad = false;
+  });
+
+  /* ── プレゼンス（接続人数） ── */
+  const connectedRef = db.ref('.info/connected');
+  connectedRef.on('value', snap => {
+    const dot = document.getElementById('online-dot');
+    if (snap.val() === true) {
+      dot.classList.add('connected');
+      // 自分の在席を登録、切断時に自動削除
+      const myRef = presenceRef.push();
+      myRef.onDisconnect().remove();
+      myRef.set({ joined: Date.now() });
+    } else {
+      dot.classList.remove('connected');
+    }
+  });
+  presenceRef.on('value', snap => {
+    const count = snap.numChildren();
+    const countEl = document.getElementById('online-count');
+    if (count === 0) {
+      countEl.textContent = 'オフライン';
+    } else {
+      countEl.textContent = `${count}人がオンライン`;
+    }
+  });
+
+  /* ── ボタン: リセット ── */
   document.getElementById('btn-reset').addEventListener('click', () => {
-    if (!confirm('リセットしますか？')) return;
+    if (!confirm('全員の画面がリセットされます。よろしいですか？')) return;
     const pool = document.getElementById('pool');
     const cards = Array.from(document.querySelectorAll('.movie-card'));
     cards.sort((a, b) => Number(a.dataset.num) - Number(b.dataset.num));
     cards.forEach(c => pool.appendChild(c));
+    saveState();
   });
 
+  /* ── ボタン: 結果をコピー ── */
   document.getElementById('btn-copy').addEventListener('click', () => {
     let text = '名探偵コナン 劇場版 Tierリスト\n\n';
     TIERS.forEach(t => {
@@ -421,6 +602,7 @@
     });
   });
 
+  /* ── ボタン: 画像で保存 ── */
   document.getElementById('btn-save').addEventListener('click', async () => {
     const btn = document.getElementById('btn-save');
     btn.textContent = '生成中...';
@@ -439,6 +621,16 @@
       btn.textContent = '画像で保存';
       btn.disabled = false;
     }
+  });
+
+  /* ── ボタン: URLをコピー ── */
+  document.getElementById('btn-share').addEventListener('click', () => {
+    navigator.clipboard.writeText(location.href).then(() => {
+      const btn = document.getElementById('btn-share');
+      const orig = btn.textContent;
+      btn.textContent = 'コピーしました';
+      setTimeout(() => btn.textContent = orig, 2000);
+    });
   });
 </script>
 </body>
