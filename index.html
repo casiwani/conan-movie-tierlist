@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>名探偵コナン 劇場版 Tierリスト</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Google Tasks風ダークグレーベース ── */
+    :root {
+      --bg:        #202124;
+      --surface:   #2d2f31;
+      --surface2:  #35373a;
+      --border:    #3c4043;
+      --text:      #e8eaed;
+      --text-sub:  #9aa0a6;
+      --text-dim:  #5f6368;
+
+      /* 黒ぬき */
+      --kuro-bg:   #17181a;
+      --kuro-text: #e8eaed;
+      /* 白ぬき */
+      --shiro-bg:  #e8eaed;
+      --shiro-text:#17181a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Roboto', 'Noto Sans JP', sans-serif;
+      min-height: 100vh;
+      padding: 28px 20px 40px;
+    }
+
+    /* ── ヘッダー ── */
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: 1px;
+    }
+    header p {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      margin-top: 5px;
+    }
+
+    /* ── ボタン ── */
+    .controls {
+      max-width: 1200px;
+      margin: 0 auto 18px;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 6px 18px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: inherit;
+      background: var(--surface);
+      color: var(--text-sub);
+      transition: background 0.15s, color 0.15s;
+      letter-spacing: 0.3px;
+    }
+    button:hover  { background: var(--surface2); color: var(--text); }
+    button:active { background: var(--border); }
+
+    /* ── Tier テーブル ── */
+    .tier-table {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto 16px;
+    }
+
+    .tier-row {
+      display: flex;
+      align-items: stretch;
+      margin-bottom: 3px;
+      min-height: 112px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .tier-label {
+      width: 62px;
+      min-width: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.9rem;
+      font-weight: 700;
+      font-family: 'Roboto', sans-serif;
+      flex-shrink: 0;
+      user-select: none;
+      border-right: 1px solid var(--border);
+    }
+
+    /* ── 黒ぬき・白ぬき交互 ── */
+    /* S: 黒ぬき */
+    .tier-S .tier-label { background: var(--kuro-bg);  color: var(--kuro-text); }
+    /* A: 白ぬき */
+    .tier-A .tier-label { background: var(--shiro-bg); color: var(--shiro-text); }
+    /* B: 黒ぬき */
+    .tier-B .tier-label { background: var(--kuro-bg);  color: var(--kuro-text); }
+    /* C: 白ぬき */
+    .tier-C .tier-label { background: var(--shiro-bg); color: var(--shiro-text); }
+    /* D: 黒ぬき */
+    .tier-D .tier-label { background: var(--kuro-bg);  color: var(--kuro-text); }
+
+    /* Tier ゾーン：黒ぬき行は少し明るく、白ぬき行は少し暗くして区別 */
+    .tier-S .tier-zone { background: #252729; }
+    .tier-A .tier-zone { background: #232527; }
+    .tier-B .tier-zone { background: #252729; }
+    .tier-C .tier-zone { background: #232527; }
+    .tier-D .tier-zone { background: #252729; }
+
+    .tier-zone {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 7px;
+      transition: background 0.12s;
+      min-height: 112px;
+      align-content: flex-start;
+    }
+    .tier-zone.drag-over { background: var(--surface2) !important; }
+
+    /* ── カード ── */
+    .movie-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.12s, background 0.12s, opacity 0.15s;
+      width: 86px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .movie-card:hover {
+      transform: translateY(-3px);
+      background: var(--surface2);
+      z-index: 10;
+    }
+    .movie-card.dragging { opacity: 0.3; cursor: grabbing; }
+    .insert-before { outline: 1px solid var(--text-sub); outline-offset: -1px; }
+
+    .movie-card img {
+      width: 100%;
+      height: 118px;
+      object-fit: cover;
+      object-position: top;
+      display: block;
+      pointer-events: none;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-info {
+      padding: 4px 5px 5px;
+      background: var(--surface);
+      flex: 1;
+    }
+    .movie-num   { font-size: 0.57rem; color: var(--text-dim); display: block; font-weight: 500; }
+    .movie-title { color: var(--text);     font-size: 0.63rem; font-weight: 500; line-height: 1.3; display: block; }
+    .movie-year  { font-size: 0.55rem; color: var(--text-dim); margin-top: 1px; display: block; }
+
+    /* ツールチップ */
+    .movie-card:hover::after {
+      content: attr(data-title);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.73rem;
+      padding: 4px 10px;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 200;
+      border: 1px solid var(--border);
+    }
+
+    /* ── 未分類プール ── */
+    .pool-section { max-width: 1200px; margin: 0 auto 28px; }
+    .pool-section h2 {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      padding-left: 2px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .pool-zone {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      display: flex; flex-wrap: wrap; gap: 5px;
+      min-height: 112px; align-content: flex-start;
+      transition: background 0.12s;
+    }
+    .pool-zone.drag-over { background: var(--surface2); }
+
+    #capture-area { max-width: 1200px; margin: 0 auto; }
+
+    footer {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.68rem;
+      padding-bottom: 10px;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>名探偵コナン 劇場版 Tierリスト</h1>
+  <p>ドラッグ＆ドロップで並べ替え　／　左右移動で順位を調整</p>
+</header>
+
+<div class="controls">
+  <button id="btn-reset">リセット</button>
+  <button id="btn-copy">結果をコピー</button>
+  <button id="btn-save">画像で保存</button>
+</div>
+
+<div id="capture-area">
+  <div class="tier-table" id="tier-table"></div>
+</div>
+
+<div class="pool-section">
+  <h2>未分類</h2>
+  <div class="pool-zone drop-zone" id="pool" data-tier="pool"></div>
+</div>
+
+<footer>DETECTIVE CONAN MOVIE TIER LIST — 第1作〜第29作</footer>
+
+<script>
+  const TIERS = ['S','A','B','C','D'];
+  const MOVIES = [
+    { num:1,  title:'時計仕掛けの摩天楼',    year:1997, img:'adf0d65f-aaf2-453d-8299-e627df79d61b.png' },
+    { num:2,  title:'14番目の標的',           year:1998, img:'45d850a3-8aa3-4490-93f7-5cc1c4a97415.png' },
+    { num:3,  title:'世紀末の魔術師',          year:1999, img:'c155b18a-4a0c-4d81-af8f-418a20cafb9f.png' },
+    { num:4,  title:'瞳の中の暗殺者',          year:2000, img:'119e829a-d4c6-48fd-867d-c6b87263f7d4.png' },
+    { num:5,  title:'天国へのカウントダウン',   year:2001, img:'e9429c37-3813-4b2b-845f-4696d477c9d2.png' },
+    { num:6,  title:'ベイカー街の亡霊',         year:2002, img:'c95e82e6-a976-4f48-bf13-492952475e1d.png' },
+    { num:7,  title:'迷宮の十字路',            year:2003, img:'3a1268dc-5110-4aa0-9f4d-95727fc14aaf.png' },
+    { num:8,  title:'銀翼の奇術師',            year:2004, img:'3527bcc4-bc56-466d-a472-8fcf03662f26.png' },
+    { num:9,  title:'水平線上の陰謀',          year:2005, img:'66faec01-3804-4e50-abc9-ce763741d973.png' },
+    { num:10, title:'探偵たちの鎮魂歌',         year:2006, img:'b3564e0a-8641-48b5-9d2b-323d0a7e6cdc.png' },
+    { num:11, title:'紺碧の棺',               year:2007, img:'8215b999d5643592.jpg' },
+    { num:12, title:'戦慄の楽譜',              year:2008, img:'eec93484-5ddb-4ae2-94cc-e42a9ca26d5f.png' },
+    { num:13, title:'漆黒の追跡者',            year:2009, img:'3b330af7-fcf1-4c1a-a379-38e6d60ceba6.png' },
+    { num:14, title:'天空の難破船',            year:2010, img:'15bb1b10-1c32-4dd0-a4d2-0487c7803c98.png' },
+    { num:15, title:'沈黙の15分',              year:2011, img:'7b78d9a4-8333-4bff-9d2f-2d0776e3e997.png' },
+    { num:16, title:'11人目のストライカー',     year:2012, img:'c921848d-001e-4891-8f74-feb57bedb779.png' },
+    { num:17, title:'絶海の探偵',              year:2013, img:'3fcb02aa-cd82-4458-959f-08594389920b.png' },
+    { num:18, title:'異次元の狙撃手',          year:2014, img:'d6f4abf1-dd85-4d3a-876a-be047651dd59.png' },
+    { num:19, title:'業火の向日葵',            year:2015, img:'7468a7b6-531b-4510-bdac-f5f625e38fd1.png' },
+    { num:20, title:'純黒の悪夢',              year:2016, img:'10151791-2504-49b6-82ce-12ad47704c2c.png' },
+    { num:21, title:'から紅の恋歌',            year:2017, img:'4c1dce79-b994-427d-927d-931f195e23b4.png' },
+    { num:22, title:'ゼロの執行人',            year:2018, img:'279d4142-6368-4eb0-8c2a-c6aea6ef801a.png' },
+    { num:23, title:'紺青の拳',               year:2019, img:'4185ca5f-c9b9-4b14-86ca-67bc28801e96.png' },
+    { num:24, title:'緋色の弾丸',              year:2021, img:'77dbe4c7-d027-4220-b5f8-cc6ea8e2a8e5.png' },
+    { num:25, title:'ハロウィンの花嫁',         year:2022, img:'4abe5cea-12d8-4fbb-839d-6303584b450d.png' },
+    { num:26, title:'黒鉄の魚影',              year:2023, img:'18d39ab8-b1c6-4486-b58b-3278f74bd4e3.png' },
+    { num:27, title:'100万ドルの五稜星',        year:2024, img:'c9d94bdd-3772-49d1-b6a4-6a4a35eb5989.png' },
+    { num:28, title:'隻眼の残像',              year:2025, img:'807b0893-9785-4150-9aee-9e12273fe7cf.png' },
+    { num:29, title:'ハイウェイの堕天使',       year:2026, img:'09231546.jpg' },
+  ];
+
+  const tierTable = document.getElementById('tier-table');
+  TIERS.forEach(t => {
+    const row = document.createElement('div');
+    row.className = `tier-row tier-${t}`;
+    const label = document.createElement('div');
+    label.className = 'tier-label';
+    label.textContent = t;
+    const zone = document.createElement('div');
+    zone.className = 'tier-zone drop-zone';
+    zone.dataset.tier = t;
+    row.appendChild(label);
+    row.appendChild(zone);
+    tierTable.appendChild(row);
+  });
+
+  const pool = document.getElementById('pool');
+  MOVIES.forEach(m => pool.appendChild(createCard(m)));
+
+  function createCard(movie) {
+    const card = document.createElement('div');
+    card.className = 'movie-card';
+    card.draggable = true;
+    card.dataset.num = movie.num;
+    card.dataset.title = `第${movie.num}作『${movie.title}』`;
+    const img = document.createElement('img');
+    img.src = movie.img; img.alt = movie.title;
+    img.draggable = false; img.crossOrigin = 'anonymous';
+    const info = document.createElement('div');
+    info.className = 'card-info';
+    info.innerHTML = `<span class="movie-num">第${movie.num}作</span><span class="movie-title">${movie.title}</span><span class="movie-year">${movie.year}</span>`;
+    card.appendChild(img);
+    card.appendChild(info);
+    addDragEvents(card);
+    return card;
+  }
+
+  let dragCard = null;
+  function addDragEvents(card) {
+    card.addEventListener('dragstart', e => {
+      dragCard = card;
+      setTimeout(() => card.classList.add('dragging'), 0);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      dragCard = null;
+      document.querySelectorAll('.drag-over').forEach(z => z.classList.remove('drag-over'));
+      document.querySelectorAll('.insert-before').forEach(c => c.classList.remove('insert-before'));
+    });
+  }
+
+  function getDragAfterElement(zone, x, y) {
+    const cards = [...zone.querySelectorAll('.movie-card:not(.dragging)')];
+    if (!cards.length) return null;
+    const rects = cards.map(c => ({ card: c, r: c.getBoundingClientRect() }));
+    const sameRow = rects.filter(({ r }) => y >= r.top - 4 && y <= r.bottom + 4);
+    const candidates = sameRow.length ? sameRow : rects;
+    let best = null, bestDist = Infinity;
+    for (const { card, r } of candidates) {
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      if (x < cx) {
+        const dist = Math.abs(x - cx) + Math.abs(y - cy) * 0.5;
+        if (dist < bestDist) { bestDist = dist; best = card; }
+      }
+    }
+    return best;
+  }
+
+  document.querySelectorAll('.drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', e => {
+      e.preventDefault();
+      zone.classList.add('drag-over');
+      if (!dragCard) return;
+      document.querySelectorAll('.insert-before').forEach(c => c.classList.remove('insert-before'));
+      const after = getDragAfterElement(zone, e.clientX, e.clientY);
+      if (after) after.classList.add('insert-before');
+    });
+    zone.addEventListener('dragleave', e => {
+      if (!zone.contains(e.relatedTarget)) {
+        zone.classList.remove('drag-over');
+        document.querySelectorAll('.insert-before').forEach(c => c.classList.remove('insert-before'));
+      }
+    });
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      document.querySelectorAll('.insert-before').forEach(c => c.classList.remove('insert-before'));
+      if (!dragCard) return;
+      const after = getDragAfterElement(zone, e.clientX, e.clientY);
+      after ? zone.insertBefore(dragCard, after) : zone.appendChild(dragCard);
+    });
+  });
+
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    if (!confirm('リセットしますか？')) return;
+    const pool = document.getElementById('pool');
+    const cards = Array.from(document.querySelectorAll('.movie-card'));
+    cards.sort((a, b) => Number(a.dataset.num) - Number(b.dataset.num));
+    cards.forEach(c => pool.appendChild(c));
+  });
+
+  document.getElementById('btn-copy').addEventListener('click', () => {
+    let text = '名探偵コナン 劇場版 Tierリスト\n\n';
+    TIERS.forEach(t => {
+      const zone = document.querySelector(`.tier-zone[data-tier="${t}"]`);
+      const cards = zone.querySelectorAll('.movie-card');
+      if (cards.length) {
+        text += `[${t}]\n`;
+        cards.forEach(card => {
+          const m = MOVIES.find(x => x.num == card.dataset.num);
+          text += `  第${m.num}作『${m.title}』(${m.year})\n`;
+        });
+        text += '\n';
+      }
+    });
+    const poolCards = document.getElementById('pool').querySelectorAll('.movie-card');
+    if (poolCards.length) {
+      text += '[未分類]\n';
+      poolCards.forEach(card => {
+        const m = MOVIES.find(x => x.num == card.dataset.num);
+        text += `  第${m.num}作『${m.title}』(${m.year})\n`;
+      });
+    }
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('btn-copy');
+      const orig = btn.textContent;
+      btn.textContent = 'コピーしました';
+      setTimeout(() => btn.textContent = orig, 2000);
+    });
+  });
+
+  document.getElementById('btn-save').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-save');
+    btn.textContent = '生成中...';
+    btn.disabled = true;
+    try {
+      const canvas = await html2canvas(document.getElementById('capture-area'), {
+        backgroundColor: '#202124', scale: 2, useCORS: true, allowTaint: false, logging: false,
+      });
+      const link = document.createElement('a');
+      link.download = 'コナン映画Tierリスト.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch(e) {
+      alert('画像生成に失敗しました。');
+    } finally {
+      btn.textContent = '画像で保存';
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
